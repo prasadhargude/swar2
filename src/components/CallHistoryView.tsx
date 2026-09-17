@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
 import { CallHistoryItem, UserModel } from '../types';
 import { AppAvatar } from './AppAvatar';
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, ShieldAlert, CheckCircle2, Trash2, Search } from 'lucide-react';
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, ShieldAlert, CheckCircle2, Trash2, Search, FileText, ScanLine } from 'lucide-react';
+import { evidenceService } from '../services/evidenceService';
 
 interface CallHistoryViewProps {
   history: CallHistoryItem[];
   onRedial: (user: UserModel) => void;
   onClearHistory: () => void;
+  onViewReport?: (caseId: string) => void;
+  onOpenVisionAnalysis?: () => void;
 }
 
 export const CallHistoryView: React.FC<CallHistoryViewProps> = ({
   history,
   onRedial,
   onClearHistory,
+  onViewReport,
+  onOpenVisionAnalysis,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const packages = evidenceService.getPackages();
 
   const filteredHistory = history.filter((item) =>
     item.peerUsername.toLowerCase().includes(searchTerm.toLowerCase())
@@ -69,6 +75,8 @@ export const CallHistoryView: React.FC<CallHistoryViewProps> = ({
           filteredHistory.map((item) => {
             const isFake = item.verdict === 'fake';
             const isReal = item.verdict === 'real';
+            
+            const matchedPkg = packages.find(pkg => pkg.peerUsername === item.peerUsername);
 
             return (
               <div
@@ -122,21 +130,46 @@ export const CallHistoryView: React.FC<CallHistoryViewProps> = ({
                   </div>
                 </div>
 
-                {/* Redial Action */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    onRedial({
-                      userId: item.peerUserId,
-                      username: item.peerUsername,
-                      status: 'online',
-                    })
-                  }
-                  className="p-2 rounded-full text-[#23A55A] hover:bg-[#23A55A]/20 transition-colors"
-                  title={`Call ${item.peerUsername}`}
-                >
-                  <Phone className="w-4 h-4 fill-current" />
-                </button>
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Vision Analysis Action */}
+                  <button
+                    type="button"
+                    onClick={() => onOpenVisionAnalysis?.()}
+                    className="group-hover:opacity-100 opacity-0 p-2 rounded-full text-[#949BA4] hover:text-[#F2F3F5] hover:bg-[#4E5058]/50 transition-all"
+                    title="Analyze with Vision AI"
+                  >
+                    <ScanLine className="w-4 h-4" />
+                  </button>
+
+                  {/* View Report Action */}
+                  {matchedPkg && (
+                    <button
+                      type="button"
+                      onClick={() => onViewReport?.(matchedPkg.id)}
+                      className="p-2 rounded-full text-[#5865F2] hover:bg-[#5865F2]/20 transition-colors"
+                      title="View Forensic Report"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* Redial Action */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onRedial({
+                        userId: item.peerUserId,
+                        username: item.peerUsername,
+                        status: 'online',
+                      })
+                    }
+                    className="p-2 rounded-full text-[#23A55A] hover:bg-[#23A55A]/20 transition-colors"
+                    title={`Call ${item.peerUsername}`}
+                  >
+                    <Phone className="w-4 h-4 fill-current" />
+                  </button>
+                </div>
               </div>
             );
           })

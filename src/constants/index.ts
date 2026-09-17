@@ -58,3 +58,12 @@ export const SignalType = {
   liveTranscript: 'live_transcript',
   presenceRefresh: 'presence_refresh',
 } as const;
+
+export const IntegrityConfig = {
+  enabled: true,
+  simulateBlockchain: true,
+  blockchainDifficulty: 2, // Number of leading zeros required for PoW
+  autoCreateEvidencePackage: true,
+  demoOrgId: 'ORG-WARRIORS-X-001',
+  demoOrgName: 'Warriors-X SIH26228',
+} as const;

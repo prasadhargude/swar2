@@ -7,7 +7,12 @@ import { SpoofOverlayWidget } from './SpoofOverlayWidget';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { ForensicMonitorModal } from './ForensicMonitorModal';
 import { SecurityRiskBanner } from './SecurityRiskBanner';
+import { RiskTimelineBanner } from './RiskTimelineBanner';
 import { ActiveVerificationPrompt } from './ActiveVerificationPrompt';
+import { MfaVerificationModal } from './MfaVerificationModal';
+import { VerifiedCallbackModal } from './VerifiedCallbackModal';
+import { ReportIncidentModal } from './ReportIncidentModal';
+import { ForensicSubmissionModal } from './ForensicSubmissionModal';
 import {
   PhoneOff,
   Mic,
@@ -20,14 +25,16 @@ import {
   ShieldCheck,
   Pause,
   Play,
-  UserPlus,
   Lock,
   KeyRound,
-  Fingerprint,
+  PhoneCall,
+  Flag,
+  HardDrive,
 } from 'lucide-react';
 import { deepfakeService } from '../services/deepfakeService';
 import { soundEffects } from '../services/soundEffects';
 import { TrustedContact, SpeakerSegmentResult, ActiveVerificationState } from '../types/speakerFingerprint';
+import { RiskTimelineEntry, GraduatedResponse } from '../types/integrity';
 import {
   continuousSpeakerVerification,
   neuralVoiceAuthenticity,
@@ -42,6 +49,7 @@ interface ActiveCallScreenProps {
   transcriptSegments: TranscriptSegment[];
   isReconnecting: boolean;
   trustedContact?: TrustedContact;
+  trustedContacts?: TrustedContact[];
   activeVerificationState?: ActiveVerificationState;
   onEndCall: () => void;
   onToggleMute: (muted: boolean) => void;
@@ -55,6 +63,7 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
   transcriptSegments,
   isReconnecting,
   trustedContact,
+  trustedContacts = [],
   activeVerificationState,
   onEndCall,
   onToggleMute,
@@ -68,6 +77,11 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(true);
+  // Feature modals
+  const [showMfa, setShowMfa] = useState(false);
+  const [showCallback, setShowCallback] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showForensic, setShowForensic] = useState(false);
 
   const isRinging = call.state === 'ringingOutgoing';
   const isConnected = call.state === 'connected';
@@ -104,6 +118,40 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
       activeVerification: activeVerificationState || null,
     });
   }, [detectionState, activeVerificationState, conversationAnalysis]);
+
+  const [riskTimeline, setRiskTimeline] = useState<RiskTimelineEntry[]>([]);
+
+  // Update timeline every few seconds
+  useEffect(() => {
+    if (!isConnected || isOnHold) return;
+    
+    // Add an initial entry if empty
+    if (elapsedSeconds === 0 && riskTimeline.length === 0) {
+      setRiskTimeline([{ timestamp: 0, score: riskAssessment.riskScore }]);
+      return;
+    }
+    
+    if (elapsedSeconds > 0 && elapsedSeconds % 3 === 0) {
+      setRiskTimeline(prev => {
+        // Prevent duplicate entries for the same second
+        if (prev.length > 0 && prev[prev.length - 1].timestamp === elapsedSeconds) {
+          return prev;
+        }
+        return [
+          ...prev.slice(-20), // keep last 20 entries
+          { timestamp: elapsedSeconds, score: riskAssessment.riskScore }
+        ];
+      });
+    }
+  }, [isConnected, isOnHold, elapsedSeconds, riskAssessment.riskScore]);
+
+  // Determine graduated response
+  const graduatedResponse: GraduatedResponse = useMemo(() => {
+    if (riskAssessment.riskScore > 80) return { action: 'BLOCK_ESCALATE' };
+    if (riskAssessment.riskScore > 60) return { action: 'MFA_REQUIRED' };
+    if (riskAssessment.riskScore > 35) return { action: 'ADDITIONAL_VERIFICATION' };
+    return { action: 'CONTINUE' };
+  }, [riskAssessment.riskScore]);
 
   // Ringback sound management
   useEffect(() => {
@@ -263,6 +311,16 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
                 setShowVerificationPrompt(true);
               }
             }}
+          />
+        </div>
+
+        {/* Real-Time Risk Timeline Banner */}
+        <div className="w-full max-w-sm px-1 my-1.5 shrink-0">
+          <RiskTimelineBanner
+            currentScore={riskAssessment.riskScore}
+            riskLevel={riskAssessment.overallRiskLevel as 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'}
+            timeline={riskTimeline}
+            graduatedResponse={graduatedResponse}
           />
         </div>
 
@@ -429,6 +487,56 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
           </button>
         </div>
 
+        {/* Active Decision & Response Layer — shown when risk is elevated */}
+        {riskAssessment.riskScore > 35 && (
+          <div className="w-full mt-2 mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[#949BA4] text-center mb-1.5">
+              Decision &amp; Response Layer
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Trigger MFA */}
+              <button
+                onClick={() => { soundEffects.vibrate(20); setShowMfa(true); }}
+                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95"
+                style={{ background: 'rgba(254,231,92,0.12)', borderColor: '#FEE75C', color: '#FEE75C' }}
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Trigger MFA</span>
+              </button>
+
+              {/* Verified Callback */}
+              <button
+                onClick={() => { soundEffects.vibrate(20); setShowCallback(true); }}
+                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95"
+                style={{ background: 'rgba(88,101,242,0.12)', borderColor: '#5865F2', color: '#5865F2' }}
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>Verified Callback</span>
+              </button>
+
+              {/* Report */}
+              <button
+                onClick={() => { soundEffects.vibrate(20); setShowReport(true); }}
+                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95"
+                style={{ background: 'rgba(237,66,69,0.12)', borderColor: '#ED4245', color: '#ED4245' }}
+              >
+                <Flag className="w-4 h-4" />
+                <span>Report</span>
+              </button>
+
+              {/* Send Recording for Forensic Analysis */}
+              <button
+                onClick={() => { soundEffects.vibrate(20); setShowForensic(true); }}
+                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95"
+                style={{ background: 'rgba(114,137,218,0.12)', borderColor: '#7289DA', color: '#7289DA' }}
+              >
+                <HardDrive className="w-4 h-4" />
+                <span>Send Recording</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Red End Call Circular Button */}
         <div className="pt-0.5 flex items-center justify-center">
           <button
@@ -482,6 +590,55 @@ export const ActiveCallScreen: React.FC<ActiveCallScreenProps> = ({
         <ForensicMonitorModal
           detectionState={detectionState}
           onClose={() => setShowDiagnostics(false)}
+        />
+      )}
+
+      {/* MFA Verification Modal */}
+      {showMfa && (
+        <MfaVerificationModal
+          callerName={call.peerUsername}
+          riskScore={riskAssessment.riskScore}
+          riskLevel={riskAssessment.overallRiskLevel}
+          onVerified={() => { setShowMfa(false); soundEffects.vibrate(50); }}
+          onFailed={() => { setShowMfa(false); }}
+          onDismiss={() => setShowMfa(false)}
+        />
+      )}
+
+      {/* Verified Callback Modal */}
+      {showCallback && (
+        <VerifiedCallbackModal
+          callerName={call.peerUsername}
+          trustedContacts={trustedContacts}
+          riskScore={riskAssessment.riskScore}
+          onDismiss={() => setShowCallback(false)}
+        />
+      )}
+
+      {/* Report Incident Modal */}
+      {showReport && (
+        <ReportIncidentModal
+          callerName={call.peerUsername}
+          riskScore={riskAssessment.riskScore}
+          riskLevel={riskAssessment.overallRiskLevel}
+          detectedKeywords={(conversationAnalysis as any)?.detectedKeywords || []}
+          transcriptSnippet={transcriptSegments.map(s => s.text).join(' ')}
+          onDismiss={() => setShowReport(false)}
+        />
+      )}
+
+      {/* Forensic Submission Modal */}
+      {showForensic && (
+        <ForensicSubmissionModal
+          callId={call.callId}
+          callerName={call.peerUsername}
+          riskScore={riskAssessment.riskScore}
+          riskLevel={riskAssessment.overallRiskLevel}
+          transcriptText={transcriptSegments.map(s => s.text).join(' ')}
+          spoofScore={detectionState.lastMse}
+          spoofVerdict={detectionState.verdict}
+          investigator={'Investigator'}
+          onDismiss={() => setShowForensic(false)}
         />
       )}
     </div>

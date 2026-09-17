@@ -1,6 +1,9 @@
 import { ApiConstants } from '../constants';
 import { DetectionState, DetectionVerdict } from '../types';
 import { LiveAudioStreamProcessor, AcousticAnalysisMetrics } from './realAudioEngine';
+import { inferenceRecorder } from './inferenceRecorder';
+import { integrityEngine } from './integrityEngine';
+import { modelRegistry } from './modelRegistry';
 
 export class DetectionWindowService {
   private windowSize = ApiConstants.baraConfig.windowSize;
@@ -158,6 +161,28 @@ export class DeepfakeDetectionEngine {
       fakeRatio: Number(windowResult.fakeRatio.toFixed(2)),
       reliableVotesCount: windowResult.reliableVotes,
     };
+
+    // Integrity Framework: Record Inference
+    const model = modelRegistry.getModel('mod_bara_cae');
+    if (model) {
+      integrityEngine.hashData(JSON.stringify(result)).then(inputHash => {
+        inferenceRecorder.recordInference({
+          inputHash,
+          modelId: model.modelId,
+          modelHash: model.sha256,
+          modelVersion: model.version || '2.1',
+          output: {
+            mse: result.mse,
+            isFake: result.isFake,
+            isReliable: result.isReliable,
+            silenceRatio: result.silenceRatio,
+            rmsEnergy: result.rmsEnergy,
+            windowVerdict: windowResult.verdict
+          }
+        }).catch(err => console.error('[Integrity Framework] Failed to record inference', err));
+      });
+    }
+
 
     this.notify();
   }

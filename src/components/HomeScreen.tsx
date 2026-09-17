@@ -10,6 +10,9 @@ import { SecurityDashboard } from './SecurityDashboard';
 import { SettingsModal } from './SettingsModal';
 import { ContactsManagementView } from './ContactsManagementView';
 import { DemoScenariosSelector } from './DemoScenariosSelector';
+import { ProvenanceDashboard } from './ProvenanceDashboard';
+import { VerificationPage } from './VerificationPage';
+import { VisionAnalysisView } from './VisionAnalysisView';
 import { TrustedContact, DemoScenarioId } from '../types/speakerFingerprint';
 import { TrustedContactsStore } from '../services/trustedContactsStore';
 import { soundEffects } from '../services/soundEffects';
@@ -26,6 +29,7 @@ import {
   AlertCircle,
   X,
   Fingerprint,
+  Scan,
 } from 'lucide-react';
 
 interface HomeScreenProps {
@@ -72,6 +76,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showAccountSheet, setShowAccountSheet] = useState(false);
   const [showDemoScenariosModal, setShowDemoScenariosModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [verificationCaseId, setVerificationCaseId] = useState<string | null>(null);
+  const [showVisionAnalysis, setShowVisionAnalysis] = useState(false);
 
   // New contact form
   const [contactName, setContactName] = useState('');
@@ -219,6 +225,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               history={callHistory}
               onRedial={onStartCall}
               onClearHistory={onClearHistory}
+              onViewReport={(caseId) => setVerificationCaseId(caseId)}
+              onOpenVisionAnalysis={() => setShowVisionAnalysis(true)}
             />
 
             {/* Floating Action Button (FAB) to open Keypad */}
@@ -335,6 +343,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onSimulateIncomingCall('Colleague Rohit (Human)', false)
               }
             />
+          </div>
+        )}
+
+        {/* TAB 6: INTEGRITY PROVENANCE */}
+        {activeTab === 'integrity' && (
+          <div className="flex-1 flex flex-col relative">
+            <ProvenanceDashboard />
+
+            {/* Floating Action Button (FAB) for Vision Analysis */}
+            <div className="fixed bottom-20 right-6 z-30">
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.vibrate(20);
+                  setShowVisionAnalysis(true);
+                }}
+                className="w-14 h-14 rounded-2xl bg-[#5865F2] hover:bg-[#4752C4] text-white shadow-xl flex items-center justify-center transition-transform active:scale-95"
+                title="Open Vision Analysis"
+              >
+                <Scan className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -502,6 +532,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onSimulateScenario(scId);
           }}
           onClose={() => setShowDemoScenariosModal(false)}
+        />
+      )}
+
+      {/* Vision Analysis Full Screen Overlay */}
+      {showVisionAnalysis && (
+        <div className="fixed inset-0 z-50 bg-[#121316] overflow-y-auto">
+          <VisionAnalysisView onClose={() => setShowVisionAnalysis(false)} />
+        </div>
+      )}
+
+      {/* Verification Page Modal */}
+      {verificationCaseId && (
+        <VerificationPage
+          caseId={verificationCaseId}
+          onClose={() => setVerificationCaseId(null)}
         />
       )}
     </div>

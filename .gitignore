@@ -1,17 +1,70 @@
-﻿.dart_tool/
+# Node.js & Package Managers
+node_modules/
+.npm/
+.pnpm-store/
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+npm-debug.log*
+
+# Build Outputs
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Flutter & Android Build Artifacts
+.dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-build/
-**/build/
 android/.gradle/
 android/app/build/
 android/build/
-.idea/
-.vscode/
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+flutter_app/build/
+flutter_app/.dart_tool/
 *.apk
 *.aab
+
+# IDEs & Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS & Temp Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs & Debugging
+logs/
 *.log
+coverage/
+
+# AI Tooling & Local Caches
 .aider*
-.env
-.env
+.gemini*
+.cache/

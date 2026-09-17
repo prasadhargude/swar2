@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { TranscriptSegment } from '../types';
-import { Radio, Mic, Volume2 } from 'lucide-react';
+import { Mic, Volume2 } from 'lucide-react';
 
 interface TranscriptOverlayProps {
   segments: TranscriptSegment[];
@@ -26,19 +26,19 @@ export const TranscriptOverlay: React.FC<TranscriptOverlayProps> = ({
   return (
     <div
       id="transcript-overlay"
-      className="w-full px-3.5 py-2.5 max-h-32 bg-[#1A1C20]/95 border border-[#2B2D31] rounded-2xl shadow-xl backdrop-blur-md flex flex-col transition-all duration-200 text-left"
+      className="w-full px-3.5 py-2.5 max-h-28 bg-[#121316]/90 border border-[#2B2D31]/80 rounded-2xl shadow-xl backdrop-blur-md flex flex-col transition-all duration-200 text-left select-none"
     >
       {/* Header bar */}
-      <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-[#2B2D31]/50 shrink-0">
+      <div className="flex items-center justify-between gap-2 mb-1 pb-1 border-b border-[#2B2D31]/40 shrink-0">
         <div className="flex items-center gap-1.5">
-          <Radio className="w-3.5 h-3.5 text-[#5865F2] animate-pulse" />
-          <span className="text-[10px] font-extrabold tracking-wider text-[#949BA4] uppercase">
-            Incoming Voice Captions (Caller)
+          <div className="w-1.5 h-1.5 rounded-full bg-[#5865F2] animate-pulse" />
+          <span className="text-[10px] font-mono font-semibold tracking-wider text-[#949BA4] uppercase">
+            Live Speech Transcript
           </span>
         </div>
         <div className="flex items-center gap-1">
           <Volume2 className="w-3 h-3 text-[#23A55A]" />
-          <span className="text-[10px] font-semibold text-[#7289DA] bg-[#5865F2]/10 px-2 py-0.5 rounded-full border border-[#5865F2]/20 truncate max-w-[120px]">
+          <span className="text-[10px] font-medium text-[#7289DA] bg-[#5865F2]/10 px-2 py-0.5 rounded-md border border-[#5865F2]/20 truncate max-w-[120px]">
             {callerName}
           </span>
         </div>
@@ -46,26 +46,25 @@ export const TranscriptOverlay: React.FC<TranscriptOverlayProps> = ({
 
       {/* Transcript content */}
       {segments.length === 0 ? (
-        <div className="flex items-center gap-2 py-2 text-[#949BA4] italic text-xs">
+        <div className="flex items-center gap-2 py-1.5 text-[#949BA4] text-xs">
           <Mic className="w-3.5 h-3.5 text-[#5865F2] animate-pulse shrink-0" />
-          <span>
+          <span className="font-normal text-[11px]">
             {isListening
-              ? `Listening for incoming speech from ${callerName}...`
-              : 'Captions paused.'}
+              ? `Capturing audio stream from ${callerName}...`
+              : 'Speech recognition paused.'}
           </span>
         </div>
       ) : (
         <div
           ref={scrollContainerRef}
-          className="overflow-y-auto max-h-20 text-xs sm:text-sm leading-snug text-[#F2F3F5] pr-1 space-y-1"
+          className="overflow-y-auto max-h-16 text-xs sm:text-sm leading-relaxed text-[#F2F3F5] pr-1"
         >
-          <div className="font-normal text-[#E0E2E6]">
-            <span className="text-[#5865F2] font-semibold mr-1.5">[{callerName}]:</span>
+          <p className="font-normal text-[#DBDEE1]">
+            <span className="text-[#5865F2] font-semibold font-mono text-xs mr-1.5">[{callerName}]:</span>
             {combinedText}
-          </div>
+          </p>
         </div>
       )}
     </div>
   );
 };
-

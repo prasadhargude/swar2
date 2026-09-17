@@ -1,8 +1,8 @@
 import React from 'react';
-import { History, Users, Grid3X3, Shield, Fingerprint } from 'lucide-react';
+import { History, Users, Grid3X3, Shield, Fingerprint, Database } from 'lucide-react';
 import { soundEffects } from '../services/soundEffects';
 
-export type AndroidTabType = 'recents' | 'contacts' | 'fingerprints' | 'keypad' | 'shield';
+export type AndroidTabType = 'recents' | 'contacts' | 'fingerprints' | 'integrity' | 'keypad' | 'shield';
 
 interface AndroidNavBarProps {
   activeTab: AndroidTabType;
@@ -42,6 +42,12 @@ export const AndroidNavBar: React.FC<AndroidNavBarProps> = ({
       label: 'Voice Vault',
       icon: Fingerprint,
       badge: trustedContactsCount > 0 ? trustedContactsCount : null,
+    },
+    {
+      id: 'integrity' as AndroidTabType,
+      label: 'Integrity',
+      icon: Database,
+      badge: null,
     },
     {
       id: 'keypad' as AndroidTabType,

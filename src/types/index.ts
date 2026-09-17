@@ -71,3 +71,5 @@ export interface BaraSettings {
   autoInspectVoice: boolean;
   customServerUrl: string;
 }
+
+export * from './integrity';

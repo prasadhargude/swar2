@@ -40,6 +40,12 @@ import { liveSpeechToText } from './services/liveSpeechToText';
 import { RealAudioEngine } from './services/realAudioEngine';
 import { callerSpeechService } from './services/callerSpeechService';
 
+import { modelRegistry } from './services/modelRegistry';
+import { blockchainService } from './services/blockchainService';
+import { inferenceRecorder } from './services/inferenceRecorder';
+import { evidenceService } from './services/evidenceService';
+
+
 const DEFAULT_SETTINGS: BaraSettings = {
   threshold: ApiConstants.baraConfig.threshold,
   fakeRatioThreshold: ApiConstants.baraConfig.fakeRatioThreshold,
@@ -110,6 +116,19 @@ export function App() {
 
   // Set up WebRTC callbacks to route remote audio to deepfake evaluator & speaker verification
   useEffect(() => {
+    // Initialize integrity services
+    const initIntegrity = async () => {
+      try {
+        await modelRegistry.initialize();
+        await blockchainService.initialize();
+        await inferenceRecorder.initialize();
+        console.log('[Integrity Framework] Initialized successfully');
+      } catch (err) {
+        console.error('[Integrity Framework] Initialization failed:', err);
+      }
+    };
+    initIntegrity();
+
     webrtcCallService.setCallbacks({
       onRemoteStream: (remoteStream) => {
         remoteStreamRef.current = remoteStream;
@@ -724,6 +743,37 @@ export function App() {
       };
 
       setCallHistory((prev) => [historyItem, ...prev.slice(0, 49)]);
+
+      // --- INTEGRITY FRAMEWORK: Create Forensic Evidence Package ---
+      const fullTranscript = transcriptSegments.map((s) => s.text).join('\n');
+      
+      const finalRisk = multiSignalRiskEngine.evaluateRisk({
+        speakerSegment: activeVerificationState?.currentSegment || null,
+        voiceAuthenticity: {
+          isAuthentic: detectionState.verdict !== 'fake',
+          syntheticVoiceProbability: detectionState.verdict === 'fake' ? 0.92 : 0.06,
+          confidence: 0.94,
+          acousticArtifactsDetected: detectionState.verdict === 'fake',
+        },
+        conversationRisk: null, // We don't have conversationAnalysis in this scope, but that's fine for the final package
+        activeVerification: activeVerificationState || null,
+      });
+
+      evidenceService.createEvidencePackage({
+        callId: activeCall.callId,
+        investigator: currentUser?.username || 'Investigator',
+        peerUsername: activeCall.peerUsername,
+        callDuration: durationSec,
+        transcriptText: fullTranscript || 'No transcript generated',
+        spoofScore: detectionState.lastMse,
+        spoofVerdict: detectionState.verdict,
+        speakerMatch: activeVerificationState?.currentSegment?.matchedContactName || 'Unknown',
+        speakerSimilarity: activeVerificationState?.currentSegment?.similarityScore || 0,
+        intentCategory: 'Voice Call',
+        riskScore: finalRisk.riskScore,
+        riskLevel: finalRisk.overallRiskLevel,
+      }).catch(err => console.error('[Integrity Framework] Failed to create evidence package', err));
+      // -----------------------------------------------------------
     }
 
     // Clear any scenario simulation timers & speech synthesis
@@ -1140,6 +1190,7 @@ export function App() {
                   c.name.toLowerCase() === activeCall.peerUsername.toLowerCase() ||
                   activeCall.peerUsername.toLowerCase().includes(c.name.toLowerCase())
               )}
+              trustedContacts={trustedContacts}
               activeVerificationState={activeVerificationState || undefined}
               onEndCall={handleEndCall}
               onToggleMute={handleToggleMute}
